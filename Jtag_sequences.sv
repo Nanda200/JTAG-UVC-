@@ -48,7 +48,7 @@ class jtag_BypassInst_seq extends jtag_base_seq;
   
    jtag_seq_item seq;
   
-  bit m_tms[] = `TMS_BYPASS;
+  bit m_tms[] = `TMS_DEF;
   //Constructor
   function new(string name = "jtag_BypassInst_seq");
     super.new(name);
@@ -72,7 +72,7 @@ class jtag_SampleInst_seq extends jtag_base_seq;
   `uvm_object_utils(jtag_SampleInst_seq)
    jtag_seq_item seq;
   
-  bit m_tms[] = `TMS_SAMPLE;
+  bit m_tms[] = `TMS_DEF;
   //Constructor
   function new(string name = "jtag_SampleInst_seq ");
     super.new(name);
@@ -123,7 +123,7 @@ class jtag_ExtestEn_seq extends jtag_base_seq;
   `uvm_object_utils(jtag_ExtestEn_seq)
    jtag_seq_item seq;
   
-  bit m_tms[] = `TMS_EXTEST;
+  bit m_tms[] = `TMS_DEF;
   
   //Constructor
   function new(string name = "jtag_ExtestEn_seq");
@@ -147,7 +147,7 @@ class jtag_RandInst_seq extends jtag_base_seq;
   
   `uvm_object_utils(jtag_RandInst_seq )
    jtag_seq_item seq;
-   bit m_tms;
+  
   //Constructor
   function new(string name = "jtag_RandInst_seq");
     super.new(name);
@@ -159,10 +159,11 @@ class jtag_RandInst_seq extends jtag_base_seq;
      seq.randomize(); 
      //set tms pattern based on the randomised instruction
       case(seq.inst)
-        EXTEST      : seq.tms = `TMS_EXTEST;         
-        SAMPLE_PREL : seq.tms = `TMS_SAMPLE; 
-        BYPASS      : seq.tms = `TMS_BYPASS;
+        //EXTEST      : seq.tms = `TMS_EXTEST;         
+       // SAMPLE_PREL : seq.tms = `TMS_SAMPLE; 
+       // BYPASS      : seq.tms = `TMS_BYPASS;
         IDCODE      : seq.tms = `TMS_IDCODE;
+        default     : seq.tms = `TMS_DEF;
       endcase
        
      finish_item(seq);
