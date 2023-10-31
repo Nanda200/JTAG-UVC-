@@ -106,12 +106,36 @@ task drive_tdi();
       end
     SHIFT_DR: 
       begin
-        foreach(req.tdi[i])
-          vif.tdi <= req.tdi[i];
+        
+        case(req.inst)
+          
+     
+           
+         DEBUG : begin
+                  foreach(req.tdi[i])
+                    vif.debug_tdi_i <= req.tdi[i];
+                 end 
+         SAMPLE_PREL,EXTEST : begin
+                              foreach(req.tdi[i])
+                                vif.bs_chain_tdi_i <= req.tdi[i];
+                              end 
+         MBIST :  begin
+                  foreach(req.tdi[i])
+                    vif.mbist_tdi_i <= req.tdi[i];
+                 end
+         default : begin
+                  foreach(req.tdi[i])
+                    vif.tdi <= req.tdi[i];
+                 end
+    
+          
+        endcase
+        
         if(vif.tms == 1)
           current_state = EXIT_DR;
         else
           current_state = SHIFT_DR; 
+        
       end
     SHIFT_IR: 
       begin
