@@ -34,10 +34,12 @@ typedef enum {X,RESET, IDLE,
   
 //TMS CODES
   `define TMS_IDCODE '{0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
-  `define TMS_PRELOAD '{1,0,1,1}
-  `define TMS_BYPASS '{1,1,1,0}
-  `define TMS_SAMPLE  '{1,1,1,1}
-  `define TMS_EXTEST   '{1,0,1,1}
+  `define TMS_DEF '{0,1,1,0,0,0,0,0,0,1,1,1,0,0,{10{0}}}
+  
+  //`define TMS_PRELOAD '{1,0,1,1}
+ // `define TMS_BYPASS '{1,1,1,0}
+ // `define TMS_SAMPLE  '{1,1,1,1}
+  //`define TMS_EXTEST   '{1,0,1,1}
   
   //'{0,1,0,0,{31{0}},1}
   
