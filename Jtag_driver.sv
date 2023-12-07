@@ -8,7 +8,12 @@ class jtag_driver extends uvm_driver #(jtag_seq_item);
   `uvm_component_utils(jtag_driver)
   
     //defined in defines file
-    tap_state current_state = X;
+    tap_state current_state = RESET;
+    int inst_size;
+    int data_size;
+    bit exit,next;
+  
+    jtag_seq_item temp;
   //--------------------------------------- 
   // Constructor
   //--------------------------------------- 
@@ -32,13 +37,22 @@ class jtag_driver extends uvm_driver #(jtag_seq_item);
     tmsReset();
     forever begin
       seq_item_port.get_next_item(req);
-     
-      fork
-      drive_tms();
-      drive_tdi();
-   //   collect_tdo();
-      join
-      //req.print();
+      `uvm_info(get_type_name(),$sformatf("RECEIVED ITEM IN DRV:%s",req.convert2string()),UVM_LOW)
+      
+      
+      $cast(temp,req.clone()); // temp_req will be modified
+      `uvm_info("JTAG_DRIVER_INFO", " Driving -> ", UVM_LOW)
+       temp.print();
+      
+      inst_size = $size(req.inst);
+    /*  
+      if(temp.inst == IDCODE)
+        data_size = 31;
+      else
+        data_size = req.tdi.size();*/
+      data_size = (temp.inst == IDCODE)? 32:(req.tdi.size());
+      
+      drive();
       seq_item_port.item_done();
     end
   endtask : run_phase
@@ -46,38 +60,63 @@ class jtag_driver extends uvm_driver #(jtag_seq_item);
   //---------------------------------------
   // drive - transaction level to signal level
   // drives the value's from seq_item to interface signals
+  // tms pattern moves fsm from one state to another
+  // for waiting in shift and pause dr state apply tms <= 0 
   //---------------------------------------
-  task drive_tms();
+  task drive();
     
-    for(int i = 0;i<$size(req.tms);i++) begin
-      vif.tms<= req.tms[i];
+    int i = 0;
+    exit = 0;
+    next = 0;
+
+   while(!exit) begin
+     
+     
+     if((!next) && ((current_state == SHIFT_DR) || (current_state == SHIFT_IR) || (current_state == PAUSE_DR) || (current_state == PAUSE_IR))) begin
+       vif.tms <= 0;
+     //  $display("next = %0b",next);
+       //$display("if loop,");
+     end  
+     else begin
+       vif.tms <= temp.tms[i];
+      // $display("else loop,%0d tms : %0b",i,temp.tms[i]);
+       i++;
+     end
+     
       @(posedge vif.tck);
-    end
-    
-  endtask : drive_tms
+     drive_fsm();
+   
+     end
+  endtask : drive
   
   //wait for shift-IR state drive inst to tdi_pad_i
   //wait for shift-DR drive random tdi pattern and drive out tdo
-task drive_tdi();
+  task drive_fsm();
+    
+    //for debugging
+    `uvm_info(get_type_name(),$sformatf("CURRENT_STATE = %s",current_state.name),UVM_DEBUG)
+    
+    exit = 0;
+    next = 0;
+    case (current_state)
  
-  case (current_state)
-    X:
-      begin 
-        if(vif.tms == 1) 
-          current_state = RESET;
-      end        
     RESET:
-      begin 
+      begin   
+      
         if(vif.tms == 0) 
           current_state = IDLE;
+        else
+          current_state = RESET;
       end
     IDLE: 
       begin
+      
         if(vif.tms == 1) 
           current_state = SELECT_DR;
       end
     SELECT_DR: 
       begin
+        
         if(vif.tms == 1) 
           current_state = SELECT_IR;
         else
@@ -85,6 +124,7 @@ task drive_tdi();
       end
     SELECT_IR: 
       begin
+     
         if(vif.tms == 1)
           current_state = RESET;
         else
@@ -92,6 +132,8 @@ task drive_tdi();
       end
     CAPTURE_DR: 
       begin
+
+
         if(vif.tms == 1)
           current_state = EXIT_DR;
         else
@@ -99,6 +141,7 @@ task drive_tdi();
       end
     CAPTURE_IR: 
       begin
+      
         if(vif.tms == 1)
           current_state = EXIT_IR;
         else
@@ -106,53 +149,60 @@ task drive_tdi();
       end
     SHIFT_DR: 
       begin
-        
-        case(req.inst)
-          
-     
-           
-         DEBUG : begin
-                  foreach(req.tdi[i])
-                    vif.debug_tdi_i <= req.tdi[i];
-                 end 
-         SAMPLE_PREL,EXTEST : begin
-                              foreach(req.tdi[i])
-                                vif.bs_chain_tdi_i <= req.tdi[i];
-                              end 
-         MBIST :  begin
-                  foreach(req.tdi[i])
-                    vif.mbist_tdi_i <= req.tdi[i];
-                 end
-         default : begin
-                  foreach(req.tdi[i])
-                    vif.tdi <= req.tdi[i];
-                 end
+ 
     
-          
-        endcase
+         data_size -- ;   
         
-        if(vif.tms == 1)
+   
+          case(req.inst)              
+           
+            DEBUG              : vif.debug_tdi_i <= temp.tdi[data_size];
+            SAMPLE_PRELOAD,EXTEST : vif.bs_chain_tdi_i <= temp.tdi[data_size];
+            MBIST              : vif.mbist_tdi_i <= temp.tdi[data_size];
+            IDCODE             : vif.tdi <= 0;
+            default            : vif.tdi <= temp.tdi[data_size];
+                     
+          endcase
+        
+         if(data_size == 0) begin
+           next = 1;
+          
+          end
+        `uvm_info(get_type_name(),$sformatf("temp.tdi[%0d] = %0b = %0b",data_size,temp.tdi[data_size],vif.tdi),UVM_DEBUG);
+        
+        //state shifting logic
+         if(vif.tms == 1)
           current_state = EXIT_DR;
         else
-          current_state = SHIFT_DR; 
-        
+          current_state = SHIFT_DR;     
+   
       end
+      
     SHIFT_IR: 
       begin
-        for(int i=4;i>0;i--)
-          begin
-            vif.tdi <= req.inst[i];
-          end
-       
+        
         if(vif.tms == 1)
           current_state = EXIT_IR;
-        else
-          current_state = SHIFT_IR; 
-          
+      
+        
+        inst_size--; 
+        if (inst_size > 0)
+          begin
+            vif.tdi <= req.inst[inst_size];  
+            //$display(inst_size);
+          end
+       else begin
+         //$display("else inst loop");
+         vif.tdi <= req.inst[inst_size];
+         next = 1;  
+       end
+        //$display(vif.tdi);
+        //$display("next is %0d",next);
+     
       end
     EXIT_DR:
       begin
-       
+        //exit = 1;
         if(vif.tms == 1)
           current_state = UPDATE_DR;
         else
@@ -160,7 +210,7 @@ task drive_tdi();
       end
     EXIT_IR:
       begin
-       
+     
         if(vif.tms == 1)
           current_state = UPDATE_IR;
         else
@@ -168,13 +218,32 @@ task drive_tdi();
       end
     PAUSE_DR:
       begin
+        if(temp.ds_dly == 0)
+          next = 1;
+        
+        temp.ds_dly --;
+        
         if(vif.tms == 1)
           current_state = EXIT2_DR;
+        else 
+          current_state = PAUSE_DR;
+        
+       
       end
     PAUSE_IR:
       begin
+        
+        
+        if(temp.irs_dly == 0)
+          next = 1;
+        
+        temp.irs_dly --;
+        
         if(vif.tms == 1)
           current_state = EXIT2_IR;
+        else 
+          current_state = PAUSE_IR;
+        
       end
     EXIT2_DR:
       begin
@@ -190,16 +259,28 @@ task drive_tdi();
         else
           current_state = SHIFT_IR;
       end
-    UPDATE_DR, UPDATE_IR:
+    UPDATE_DR : 
       begin
+        
+         exit = 1;
         if(vif.tms == 1)
           current_state = SELECT_DR;
         else
           current_state = IDLE;
       end
+      
+    UPDATE_IR:
+       begin
+        exit = 1;
+        if(vif.tms == 1)
+          current_state = SELECT_DR;
+        else
+          current_state = IDLE;
+        
+      end
   endcase 
-  
-endtask
+ 
+endtask :drive_fsm
     
 
   task tmsReset();
