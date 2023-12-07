@@ -11,6 +11,7 @@ class jtag_base_seq extends uvm_sequence#(jtag_seq_item);
   
   
 endclass :jtag_base_seq
+
 //********************************************************************************
 //sequence to verify idcode instruction
 //********************************************************************************
@@ -38,106 +39,36 @@ class jtag_IdcodeInst_seq extends jtag_base_seq;
   endtask
   
 endclass:jtag_IdcodeInst_seq
+
 //********************************************************************************
 //sequence to veriy bypass instruction
 //********************************************************************************
 
-class jtag_BypassInst_seq extends jtag_base_seq;
+class jtag_inst_seq extends jtag_base_seq;
   
-  `uvm_object_utils(jtag_BypassInst_seq)
+  `uvm_object_utils(jtag_inst_seq)
   
-   jtag_seq_item seq;
+  jtag_seq_item seq;
   
   bit m_tms[] = `TMS_DEF;
+  
+  //instruction variable
+  jtag_ir m_inst;
+  
   //Constructor
-  function new(string name = "jtag_BypassInst_seq");
+  function new(string name = "jtag_inst_seq");
     super.new(name);
   endfunction
   
   virtual task body();
-    `uvm_do_with(seq,{seq.inst == BYPASS;
+    `uvm_do_with(seq,{seq.inst == m_inst;
                       seq.tms.size() == m_tms.size();
                       foreach(tms[i])
                         tms[i] == m_tms[i];
                       })
   endtask
   
-endclass:jtag_BypassInst_seq
-//********************************************************************************
-//sequence to veriy sample instruction
-//********************************************************************************
-
-class jtag_SampleInst_seq extends jtag_base_seq;
-  
-  `uvm_object_utils(jtag_SampleInst_seq)
-   jtag_seq_item seq;
-  
-  bit m_tms[] = `TMS_DEF;
-  //Constructor
-  function new(string name = "jtag_SampleInst_seq ");
-    super.new(name);
-  endfunction
-  
-    virtual task body();
-      `uvm_do_with(seq,{seq.inst == SAMPLE_PREL;
-                        seq.tms.size() == m_tms.size();
-                        foreach(tms[i])
-                        tms[i] == m_tms[i];
-                       })
-  endtask
-  
-endclass:jtag_SampleInst_seq 
-/*
-//********************************************************************************
-//sequence to veriy preload instruction
-//********************************************************************************
-
-class jtag_PreloadInst_seq extends jtag_base_seq;
-  
-  `uvm_object_utils(jtag_PreloadInst_seq)
-  
-   jtag_seq_item seq;
-  
-  bit m_tms[] = `TMS_PRELOAD;
-  //Constructor
-  function new(string name = "jtag_PreloadInst_seq ");
-    super.new(name);
-  endfunction
-  
-    virtual task body();
-      `uvm_do_with(seq,{seq.inst == SAMPLE_PREL;
-                        seq.tms.size() == m_tms.size();
-                        foreach(tms[i])
-                        tms[i] == m_tms[i];
-                       })
-  endtask
-  
-endclass:jtag_PreloadInst_seq 
-*/
-//********************************************************************************
-//sequence to veriy whether extest instruction is enabled or not
-//********************************************************************************
-
-class jtag_ExtestEn_seq extends jtag_base_seq;
-  
-  `uvm_object_utils(jtag_ExtestEn_seq)
-   jtag_seq_item seq;
-  
-  bit m_tms[] = `TMS_DEF;
-  
-  //Constructor
-  function new(string name = "jtag_ExtestEn_seq");
-    super.new(name);
-  endfunction
-  
-  virtual task body();
-    `uvm_do_with(seq,{seq.inst == EXTEST;
-                      seq.tms.size() == m_tms.size();
-                      foreach(tms[i])
-                        tms[i] == m_tms[i];})
-  endtask:body
-  
-endclass:jtag_ExtestEn_seq
+endclass:jtag_inst_seq
 
 //********************************************************************************
 //sequence to veriy any random instruction 
@@ -159,9 +90,6 @@ class jtag_RandInst_seq extends jtag_base_seq;
      seq.randomize(); 
      //set tms pattern based on the randomised instruction
       case(seq.inst)
-        //EXTEST      : seq.tms = `TMS_EXTEST;         
-       // SAMPLE_PREL : seq.tms = `TMS_SAMPLE; 
-       // BYPASS      : seq.tms = `TMS_BYPASS;
         IDCODE      : seq.tms = `TMS_IDCODE;
         default     : seq.tms = `TMS_DEF;
       endcase
@@ -170,4 +98,88 @@ class jtag_RandInst_seq extends jtag_base_seq;
   endtask:body
   
 endclass:jtag_RandInst_seq 
+
 //******************************************************************************
+//ir path sequence 
+//*******************************************************************************
+class ir_scan_sequence extends jtag_base_seq;
+  `uvm_object_utils(ir_scan_sequence)
+  
+  jtag_seq_item seq;
+  bit m_tms[] = `IR_TMS;
+  rand jtag_ir m_inst;
+  
+  function new(string name = "ir_scan_sequence");
+    super.new(name);
+  endfunction
+  
+  
+  virtual task body();
+    
+    `uvm_do_with(seq,{seq.inst == m_inst;
+                      seq.tms.size() == m_tms.size();
+                      foreach(tms[i])
+                        tms[i] == m_tms[i];
+                      })
+  endtask
+    
+endclass :ir_scan_sequence 
+//******************************************************************************
+//Data scan path sequence 
+//*******************************************************************************
+class dr_scan_sequence extends jtag_base_seq;
+  `uvm_object_utils(dr_scan_sequence)
+  
+  jtag_seq_item seq;
+  bit m_tms[] = `DR_TMS;
+  rand jtag_ir m_inst;
+  
+  function new(string name = "dr_scan_sequence");
+    super.new(name);
+  endfunction
+  
+  
+  virtual task body();
+    
+    `uvm_do_with(seq,{seq.inst == m_inst;
+                      seq.tms.size() == m_tms.size();
+                      foreach(tms[i])
+                        tms[i] == m_tms[i];
+                      })
+  
+  endtask
+    
+endclass :dr_scan_sequence 
+
+//******************************************************************************
+//instruction check  sequence 
+//*******************************************************************************
+
+class inst_check_sequence extends jtag_base_seq;
+  `uvm_object_utils(inst_check_sequence)
+  
+  dr_scan_sequence d_seq;
+  ir_scan_sequence i_seq;
+  jtag_ir m_instr;
+  
+  function new(string name = "inst_check_sequence");
+    super.new(name);
+  endfunction
+  
+  
+  virtual task body();
+    i_seq = ir_scan_sequence::type_id::create("i_seq");
+    if(!i_seq.randomize() with {m_inst == m_instr;})
+      `uvm_error(get_type_name(),"RANODMIZATION FAILED")
+    i_seq.start(m_sequencer);
+   
+  
+    d_seq = dr_scan_sequence::type_id::create("d_seq");
+    if(!d_seq.randomize() with {m_inst == m_instr;})
+      `uvm_error(get_type_name(),"RANODMIZATION FAILED")
+    d_seq.start(m_sequencer);
+    
+  endtask
+    
+endclass : inst_check_sequence
+
