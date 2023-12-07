@@ -12,6 +12,7 @@ typedef enum {X,RESET, IDLE,
               PAUSE_DR, PAUSE_IR,
               UPDATE_DR,  UPDATE_IR } tap_state;
 
+
 // Define IDCODE Value
 `define IDCODE_VALUE  32'h0f9511c3
 // 0001             version
@@ -33,14 +34,9 @@ typedef enum {X,RESET, IDLE,
 `define BYPASS          4'b1111
   
 //TMS CODES
+  //this tms moves tms from reset to shift dr state and stays there for 31 cycles to shift out IDCODE val
   `define TMS_IDCODE '{0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1}
-  `define TMS_DEF '{0,1,1,0,0,0,0,0,0,1,1,1,0,0,{10{0}}}
   
-  //`define TMS_PRELOAD '{1,0,1,1}
- // `define TMS_BYPASS '{1,1,1,0}
- // `define TMS_SAMPLE  '{1,1,1,1}
-  //`define TMS_EXTEST   '{1,0,1,1}
-  
-  //'{0,1,0,0,{31{0}},1}
-  
-  
+  `define TMS_DEF '{0,1,1,0,0,1,1,1,0,0,1,1,0}
+  `define IR_TMS '{0,1,1,0,0,1,1}
+  `define DR_TMS '{1,0,0,1,1,0}
